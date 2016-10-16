@@ -9,7 +9,7 @@
 import Foundation
 
 
-extension FileManager {
+public extension FileManager {
     func lineReadSourceFiles<T>(atFolderPath folder: String, fileExtensionCondition: (String) -> Bool = { _ in return true },
                              foundLineCallback: (String) -> T?) -> [T] {
         guard let dirEnumerator = enumerator(atPath: folder) else {
