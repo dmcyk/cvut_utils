@@ -2,7 +2,7 @@ import PackageDescription
 
 let package = Package(
     name: "Utils",
-    target: [
+    targets: [
         Target(name: "Utils")
     ]
 )
