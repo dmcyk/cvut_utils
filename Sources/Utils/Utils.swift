@@ -44,9 +44,65 @@ public extension FileManager {
             }
             
             fclose(file)
-            wordContent.deallocate(capacity: 2048)
+            wordContent.deallocate(capacity: 4096)
         }
         return found
     }
     
+    
 }
+
+
+public extension Double {
+    static func arc4random_uniform(_ upperBound: Double) -> Double {
+        return Double(Darwin.arc4random_uniform(UInt32(upperBound)))
+    }
+    static func arc4random_uniform_i(_ upperBound: Double) -> Int {
+        return Int(Darwin.arc4random_uniform(UInt32(upperBound)))
+    }
+}
+
+public extension Int {
+    static func arc4random_uniform(_ upperBound: Int) -> Int {
+        return Int(Darwin.arc4random_uniform(UInt32(upperBound)))
+    }
+    
+    static func arc4random_uniform_d(_ upperBound: Int) -> Double {
+        return Double(Darwin.arc4random_uniform(UInt32(upperBound)))
+    }
+}
+
+
+public extension Double {
+    static func gaussianRandom(_ limit: Double) -> (Double, Double) {
+        
+        
+        var x1:Double = 0 , x2: Double = 0, w: Double = 0
+        
+        
+        repeat {
+            x1 = 2.0 * Double.arc4random_uniform(101) / 100 - 1.0
+            x2 = 2.0 * Double.arc4random_uniform(101) / 100 - 1.0
+            w = x1 * x1 + x2 * x2
+        } while ( w >= 1.0 || w == 0)
+        
+        w = sqrt( (-2.0 * log( w ) ) / w );
+        let y1 = ((x1 * w) + 3) / 6 * limit
+        let y2 = ((x2 * w) + 3) / 6 * limit
+        if y1.isNaN || y2.isNaN {
+            print("error")
+            fatalError()
+        }
+        return (y1, y2)
+        
+    }
+}
+
+public extension Int {
+    static func gaussianRandom(_ limit: Int) -> (Int, Int) {
+        let random  = Double.gaussianRandom(Double(limit))
+        return (Int(random.0), Int(random.1))
+    }
+
+}
+
