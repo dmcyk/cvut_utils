@@ -74,11 +74,9 @@ public extension Int {
 
 
 public extension Double {
-    static func gaussianRandom(_ limit: Double) -> (Double, Double) {
-        
+    static func boxMullerRandom(_ limit: Double) -> (Double, Double) {
         
         var x1:Double = 0 , x2: Double = 0, w: Double = 0
-        
         
         repeat {
             x1 = 2.0 * Double.arc4random_uniform(101) / 100 - 1.0
@@ -99,10 +97,29 @@ public extension Double {
 }
 
 public extension Int {
-    static func gaussianRandom(_ limit: Int) -> (Int, Int) {
-        let random  = Double.gaussianRandom(Double(limit))
+    static func boxMullerRandom(_ limit: Int) -> (Int, Int) {
+        let random  = Double.boxMullerRandom(Double(limit))
         return (Int(random.0), Int(random.1))
     }
 
 }
 
+public extension Array {
+    
+    func divide(withCrossoverPoints pointsCount: Int) -> [(Int, Int)] {
+        assert(pointsCount > 0 && pointsCount < count)
+        
+        let upperBound = count / (pointsCount + 1)
+        
+        var start = 0
+        var till = upperBound - 1
+        var points: [(Int, Int)] = []
+        for _ in 0 ... Int(pointsCount) {
+            points.append((start, till))
+            start = till + 1
+            till += upperBound
+        }
+        points[points.count - 1] = (start - upperBound, count - 1)
+        return points 
+    }
+}
