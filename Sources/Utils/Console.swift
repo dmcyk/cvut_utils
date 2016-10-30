@@ -1,5 +1,5 @@
 //
-//  Console
+//  Console.swift
 //  Task1
 //
 //  Created by Damian Malarczyk on 14.10.2016.
@@ -9,30 +9,30 @@
 import Foundation
 
 
-indirect enum ArgumentValueType {
+public indirect enum ArgumentValueType {
     case int, double, array(ArgumentValueType)
 }
 
-enum ArgumentValue {
+public enum ArgumentValue {
     case int(Int)
     case double(Double)
     case array([ArgumentValue])
     
-    var intValue: Int? {
+    public var intValue: Int? {
         if case .int(let value) = self {
             return value
         }
         return nil
     }
     
-    var doubleValue: Double? {
+    public var doubleValue: Double? {
         if case .double(let value) = self {
             return value
         }
         return nil
     }
     
-    var arrayValue: [ArgumentValue]? {
+    public var arrayValue: [ArgumentValue]? {
         if case .array(let value) = self {
             return value
         }
@@ -43,21 +43,26 @@ enum ArgumentValue {
     
 }
 
-enum ArgumentError: Error {
+public enum ArgumentError: Error {
     case noAssignment, incorrectValue, indirectValue, noValue
 }
 
-struct ContainedArgumentError: Error {
-    let error: ArgumentError
-    let argument: Argument
+public struct ContainedArgumentError: Error {
+    public let error: ArgumentError
+    public let argument: Argument
+    
+    public init(error: ArgumentError, argument: Argument) {
+        self.error = error
+        self.argument = argument
+    }
 }
 
-struct Argument {
-    var expected: ArgumentValueType
-    var name: String
-    var `default`: ArgumentValue?
+public struct Argument {
+    public var expected: ArgumentValueType
+    public var name: String
+    public var `default`: ArgumentValue?
     
-    init(_ name: String, expectedValue: ArgumentValueType, `default`: ArgumentValue? = nil ) {
+    public init(_ name: String, expectedValue: ArgumentValueType, `default`: ArgumentValue? = nil ) {
         self.name = name
         self.expected = expectedValue
         self.default = `default`
@@ -72,7 +77,7 @@ struct Argument {
         return number
     }
     
-    func extract(_ srcs: [String]) throws -> ArgumentValue {
+    public func extract(_ srcs: [String]) throws -> ArgumentValue {
         for src in srcs {
             guard src.contains("--\(name)=") else {
                 continue
