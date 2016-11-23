@@ -7,25 +7,25 @@
 //
 
 import Foundation
-
+import Darwin
 
 public extension FileManager {
-    func lineReadSourceFiles<T>(atFolderPath folder: String, fileExtensionCondition: (String) -> Bool = { _ in return true },
-                             foundLineCallback: (String) -> T?) -> [T] {
+    func lineReadSourceFiles<T>(atFolderPath folder: String, continueFlag: UnsafePointer<Bool>? = nil, fileExtensionCondition: (String) -> Bool = { _ in return true },
+                             foundLineCallback: (String, Int) -> T? ) -> [T] {
         guard let dirEnumerator = enumerator(atPath: folder) else {
             return []
         }
         var found = [T]()
         for element in dirEnumerator {
             if let str = element as? String {
-                found.append(contentsOf: lineReadSourceFile(folder + str, fileExtensionCondition: fileExtensionCondition, foundLineCallback: foundLineCallback))
+                found.append(contentsOf: lineReadSourceFile(folder + str, continueFlag: continueFlag, fileExtensionCondition: fileExtensionCondition, foundLineCallback: foundLineCallback))
             }
         }
         return found
     }
     
-    func lineReadSourceFile<T>(_ filePath: String, fileExtensionCondition: (String) -> Bool = { _ in return true },
-                            foundLineCallback: (String) -> T?) -> [T] {
+    func lineReadSourceFile<T>(_ filePath: String, continueFlag: UnsafePointer<Bool>? = nil, fileExtensionCondition: (String) -> Bool = { _ in return true },
+                            foundLineCallback: (String, Int) -> T?) -> [T] {
         var found = [T]()
         
         let elementUrl = URL(fileURLWithPath: filePath)
@@ -37,10 +37,16 @@ public extension FileManager {
             guard file != nil else {
                 fatalError("File at path \(elementUrl.path) not found")
             }
-            while let line = fgets(wordContent, 4096, file) {
-                if let parsedItem = foundLineCallback(String(cString: line)) {
+            var lineNumber = 1
+            var further = true
+            while further, let line = fgets(wordContent, 4096, file) {
+                if let parsedItem = foundLineCallback(String(cString: line), lineNumber) {
                     found.append(parsedItem)
                 }
+                if let ctn = continueFlag {
+                    further = ctn.pointee
+                }
+                lineNumber += 1
             }
             
             fclose(file)
@@ -49,6 +55,41 @@ public extension FileManager {
         return found
     }
     
+    enum Error: Swift.Error {
+        case notFile
+    }
+    
+    func remove(line toRemove: Int, atFile filePath: String) throws {
+        
+        var bool: ObjCBool = false
+        
+        #if os(Linux)
+            guard FileManager.default.fileExists(atPath: filePath, isDirectory: &bool) && !bool else {
+                throw Error.notFile
+            }
+        #else
+            guard FileManager.default.fileExists(atPath: filePath, isDirectory: &bool) && !bool.boolValue else {
+                throw Error.notFile
+            }
+        #endif
+        
+        let tmp = "\(filePath).tmp"
+        FileManager.default.createFile(atPath: tmp, contents: nil, attributes: [:])
+
+        let fileHandler = FileHandle(forWritingAtPath: tmp)
+        _  = FileManager.default.lineReadSourceFile(filePath) { (line, number) in
+            if toRemove != number {
+                fileHandler?.write(line.data(using: .utf8)!)
+            }
+        }
+        
+        try FileManager.default.removeItem(atPath: filePath)
+        try FileManager.default.copyItem(atPath: tmp, toPath: filePath)
+        try FileManager.default.removeItem(atPath: tmp)
+        
+        
+        
+    }
     
 }
 
