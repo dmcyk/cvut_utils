@@ -55,38 +55,48 @@ public extension FileManager {
         return found
     }
     
+    func exists(atPath path: String) -> (exists: Bool, isDir: Bool) {
+        var bool: ObjCBool = false
+        
+        var isDir = false
+        guard fileExists(atPath: path, isDirectory: &bool) else {
+            return (false, isDir)
+        }
+        #if os(Linux)
+            isDir = bool
+        #else
+            isDir = bool.boolValue
+        #endif
+        
+        return (true, isDir)
+    }
+    
     enum Error: Swift.Error {
-        case notFile
+        case notFile, notFound
     }
     
     func remove(line toRemove: Int, atFile filePath: String) throws {
-        
-        var bool: ObjCBool = false
-        
-        #if os(Linux)
-            guard FileManager.default.fileExists(atPath: filePath, isDirectory: &bool) && !bool else {
-                throw Error.notFile
-            }
-        #else
-            guard FileManager.default.fileExists(atPath: filePath, isDirectory: &bool) && !bool.boolValue else {
-                throw Error.notFile
-            }
-        #endif
+        let fTest = exists(atPath: filePath)
+        guard fTest.exists else {
+            throw Error.notFound
+        }
+        guard !fTest.isDir else {
+            throw Error.notFile
+        }
         
         let tmp = "\(filePath).tmp"
-        FileManager.default.createFile(atPath: tmp, contents: nil, attributes: [:])
+        createFile(atPath: tmp, contents: nil, attributes: [:])
 
         let fileHandler = FileHandle(forWritingAtPath: tmp)
-        _  = FileManager.default.lineReadSourceFile(filePath) { (line, number) in
+        _  = lineReadSourceFile(filePath) { (line, number) in
             if toRemove != number {
                 fileHandler?.write(line.data(using: .utf8)!)
             }
         }
         
-        try FileManager.default.removeItem(atPath: filePath)
-        try FileManager.default.copyItem(atPath: tmp, toPath: filePath)
-        try FileManager.default.removeItem(atPath: tmp)
-        
+        try removeItem(atPath: filePath)
+        try copyItem(atPath: tmp, toPath: filePath)
+        try removeItem(atPath: tmp)
         
         
     }
