@@ -147,10 +147,67 @@ public extension Double {
     }
 }
 
+public func _divide(withCrossoverPoints pointsCount: Int, count: Int) -> [(Int, Int)] {
+    assert(pointsCount > 0 && pointsCount < count)
+    
+    let upperBound = count / (pointsCount + 1)
+    
+    var start = 0
+    var till = upperBound - 1
+    var points: [(Int, Int)] = []
+    for _ in 0 ... Int(pointsCount) {
+        points.append((start, till))
+        start = till + 1
+        till += upperBound
+    }
+    points[points.count - 1] = (start - upperBound, count - 1)
+    return points
+}
+
 public extension Int {
     static func boxMullerRandom(_ limit: Int) -> (Int, Int) {
         let random  = Double.boxMullerRandom(Double(limit))
         return (Int(random.0), Int(random.1))
+    }
+    
+    subscript(index: Int) -> Bool {
+        get {
+            return ((self >> index) & 1) == 1
+        }
+        
+        set {
+            if newValue {
+                self = self | (1 << index)
+            } else {
+                self = self & ~(1 << index)
+            }
+        }
+    }
+    
+    
+    
+    func bitCrossover(with another: Int, upToBit upTo: Int, pointsCount: Int) -> (Int, Int) {
+        assert(pointsCount > 0 && pointsCount < upTo)
+      
+        let points = _divide(withCrossoverPoints: pointsCount, count: upTo)
+        var son = self
+        var daughter = another
+        for point in points {
+            let mask = (1 << (point.1 - point.0) - 1) << point.0
+            let dad = self & mask
+            let mum = another & mask
+            son &= ~mask
+            daughter &= ~mask
+            son |= dad
+            daughter |= mum
+//            for p in point.0 ... point.1 {
+//                let dad = self[p]
+//                let mum = another[p]
+//                son[p] = dad
+//                daughter[p] = mum
+//            }
+        }
+        return (son, daughter)
     }
 
 }
@@ -158,19 +215,21 @@ public extension Int {
 public extension Array {
     
     func divide(withCrossoverPoints pointsCount: Int) -> [(Int, Int)] {
-        assert(pointsCount > 0 && pointsCount < count)
+        return _divide(withCrossoverPoints: pointsCount, count: self.count)
+    }
+    
+    func crossover(with another: [Element], pointsCount: Int) -> ([Element], [Element]) {
+        let points = self.divide(withCrossoverPoints: pointsCount)
+        var son = self
+        var daughter = another
         
-        let upperBound = count / (pointsCount + 1)
-        
-        var start = 0
-        var till = upperBound - 1
-        var points: [(Int, Int)] = []
-        for _ in 0 ... Int(pointsCount) {
-            points.append((start, till))
-            start = till + 1
-            till += upperBound
+        for point in points {
+            let range = point.0 ... point.1
+            let dadGenom = self[range]
+            let mumGenom = another[range]
+            son[range] = mumGenom
+            daughter[range] = dadGenom
         }
-        points[points.count - 1] = (start - upperBound, count - 1)
-        return points 
+        return (son, daughter)
     }
 }
