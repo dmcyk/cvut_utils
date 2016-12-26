@@ -86,7 +86,7 @@ public extension FileManager {
         
         let tmp = "\(filePath).tmp"
         createFile(atPath: tmp, contents: nil, attributes: [:])
-
+        
         let fileHandler = FileHandle(forWritingAtPath: tmp)
         _  = lineReadSourceFile(filePath) { (line, number) in
             if toRemove != number {
@@ -188,7 +188,7 @@ public extension Int {
     
     func bitCrossover(with another: Int, upToBit upTo: Int, pointsCount: Int) -> (Int, Int) {
         assert(pointsCount > 0 && pointsCount < upTo)
-      
+        
         let points = _divide(withCrossoverPoints: pointsCount, count: upTo)
         var son = self
         var daughter = another
@@ -200,16 +200,11 @@ public extension Int {
             daughter &= ~mask
             son |= dad
             daughter |= mum
-//            for p in point.0 ... point.1 {
-//                let dad = self[p]
-//                let mum = another[p]
-//                son[p] = dad
-//                daughter[p] = mum
-//            }
+            
         }
         return (son, daughter)
     }
-
+    
 }
 
 public extension Array {
@@ -231,5 +226,27 @@ public extension Array {
             daughter[range] = dadGenom
         }
         return (son, daughter)
+    }
+    
+}
+
+public extension Array where Element: FloatingPoint {
+    func normalized(scale: Element) -> [Element] {
+        guard let maxVal = self.max(), let minVal = self.min() else {
+            return []
+        }
+        let diff = maxVal - minVal
+        return self.map { val in
+            ((val - minVal) / diff) * scale
+        }
+    }
+}
+
+public extension String {
+    func lastIndexOf(_ string: String) -> String.Index? {
+        if let r = self.range(of: string, options: .backwards) {
+            return r.lowerBound
+        }
+        return nil
     }
 }
