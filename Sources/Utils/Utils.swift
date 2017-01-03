@@ -15,10 +15,26 @@ public extension FileManager {
         guard let dirEnumerator = enumerator(atPath: folder) else {
             return []
         }
+        let folderUrl = URL(fileURLWithPath: folder)
         var found = [T]()
         for element in dirEnumerator {
             if let str = element as? String {
-                found.append(contentsOf: lineReadSourceFile(folder + str, continueFlag: continueFlag, fileExtensionCondition: fileExtensionCondition, foundLineCallback: foundLineCallback))
+                found.append(contentsOf: lineReadSourceFile(folderUrl.appendingPathComponent(str).path, continueFlag: continueFlag, fileExtensionCondition: fileExtensionCondition, foundLineCallback: foundLineCallback))
+            }
+        }
+        return found
+    }
+    
+    func lineReadSourceFilesSeperate<T>(atFolderPath folder: String, continueFlag: UnsafePointer<Bool>? = nil, fileExtensionCondition: (String) -> Bool = { _ in return true },
+                                     foundLineCallback: (String, Int) -> T? ) -> [[T]] {
+        guard let dirEnumerator = enumerator(atPath: folder) else {
+            return []
+        }
+        let folderUrl = URL(fileURLWithPath: folder)
+        var found = [[T]]()
+        for element in dirEnumerator {
+            if let str = element as? String {
+                found.append(lineReadSourceFile(folderUrl.appendingPathComponent(str).path, continueFlag: continueFlag, fileExtensionCondition: fileExtensionCondition, foundLineCallback: foundLineCallback))
             }
         }
         return found
@@ -164,6 +180,131 @@ public func _divide(withCrossoverPoints pointsCount: Int, count: Int) -> [(Int, 
     return points
 }
 
+
+public struct BinaryBuff: CustomStringConvertible {
+    public enum Error: Swift.Error {
+        case indexOutOfRange
+    }
+    
+    static let intBitCapacity = MemoryLayout<Int>.size * 8
+    private(set) public var rawBuff: [Int]
+    private(set) public var capacity: Int
+    
+    private func buffLimit(forCapacity capacity: Int) -> Int {
+        return ((capacity / BinaryBuff.intBitCapacity) + (capacity % BinaryBuff.intBitCapacity > 0 ? 1 : 0))
+    }
+    
+    public init(capacity: Int) {
+        self.capacity = capacity
+        rawBuff = []
+        for _ in 0 ..< buffLimit(forCapacity: capacity) {
+            rawBuff.append(0)
+        }
+    }
+    
+    public init(raw: [Int]) {
+        self.rawBuff = raw
+        self.capacity = raw.count * BinaryBuff.intBitCapacity
+    }
+    
+    public mutating func extend(toCapacity to: Int) {
+        if to <= capacity {
+            capacity = to
+        } else {
+            capacity = to
+            
+            for _  in rawBuff.count ..< buffLimit(forCapacity: capacity) {
+                rawBuff.append(0)
+            }
+        }
+    }
+    
+    public func evaluate(usingWeights: [Double]) -> Double {
+        assert(usingWeights.count <= capacity)
+        var res: Double = 0
+        for (indx, weight) in usingWeights.enumerated() {
+            if self[indx] {
+                res += weight
+            }
+        }
+        return res
+    }
+
+    
+    public func get(index: Int) throws -> Bool {
+        guard index >= 0 && index < capacity else {
+            throw Error.indexOutOfRange
+        }
+        let rawIndex = index / BinaryBuff.intBitCapacity
+        let _buff = rawBuff[rawIndex]
+        let current = index - (rawIndex * BinaryBuff.intBitCapacity)
+        return ((_buff >> current) & 1) == 1
+    }
+    
+    public mutating func set(index: Int, value: Bool) throws {
+        guard index >= 0 && index < capacity else {
+            throw Error.indexOutOfRange
+        }
+        let rawIndex = index / BinaryBuff.intBitCapacity
+        let current = index - (rawIndex * BinaryBuff.intBitCapacity)
+        let _buff = rawBuff[rawIndex]
+        if value {
+            rawBuff[rawIndex] = _buff | (1 << current)
+        } else {
+            rawBuff[rawIndex] = _buff & ~(1 << current)
+        }
+    }
+    
+    subscript(index: Int) -> Bool {
+        get {
+            assert(index >= 0)
+            assert(index < capacity)
+            let rawIndex = index / BinaryBuff.intBitCapacity
+            let _buff = rawBuff[rawIndex]
+            let current = index - (rawIndex * BinaryBuff.intBitCapacity)
+            return ((_buff >> current) & 1) == 1
+        }
+        set {
+            assert(index >= 0)
+            assert(index < capacity)
+            let rawIndex = index / BinaryBuff.intBitCapacity
+            let current = index - (rawIndex * BinaryBuff.intBitCapacity)
+            let _buff = rawBuff[rawIndex]
+            if newValue {
+                rawBuff[rawIndex] = _buff | (1 << current)
+            } else {
+                rawBuff[rawIndex] = _buff & ~(1 << current)
+            }
+        }
+        
+    }
+    
+    public func crossover(with rhs: BinaryBuff, upToBits: Int, pointsCount: Int) -> (BinaryBuff, BinaryBuff) {
+        assert(upToBits <= self.capacity && upToBits <= rhs.capacity)
+        
+        var upToBits = upToBits
+        var indx = 0
+        var son = self
+        var daughter = rhs
+        while upToBits > 0 {
+            (daughter.rawBuff[indx], son.rawBuff[indx]) = self.rawBuff[indx].bitCrossover(with: rhs.rawBuff[indx], upToBit: upToBits > BinaryBuff.intBitCapacity ? BinaryBuff.intBitCapacity : upToBits, pointsCount: pointsCount)
+            
+            indx += 1
+            upToBits -= BinaryBuff.intBitCapacity
+        }
+        return (son, daughter)
+    }
+    
+    public var description: String {
+        var res = ""
+        for i in 0 ..< capacity {
+            res += "\(self[i] ? 1 : 0)"
+        }
+        return res
+    }
+    
+}
+
 public extension Int {
     static func boxMullerRandom(_ limit: Int) -> (Int, Int) {
         let random  = Double.boxMullerRandom(Double(limit))
@@ -198,10 +339,11 @@ public extension Int {
             let mum = another & mask
             son &= ~mask
             daughter &= ~mask
-            son |= dad
-            daughter |= mum
+            son |= mum
+            daughter |= dad
             
         }
+
         return (son, daughter)
     }
     
