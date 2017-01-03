@@ -255,7 +255,7 @@ public struct BinaryBuff: CustomStringConvertible {
         }
     }
     
-    subscript(index: Int) -> Bool {
+    public subscript(index: Int) -> Bool {
         get {
             assert(index >= 0)
             assert(index < capacity)
