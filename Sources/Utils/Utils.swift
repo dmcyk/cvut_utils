@@ -25,8 +25,7 @@ public extension FileManager {
         return found
     }
     
-    func lineReadSourceFilesSeperate<T>(atFolderPath folder: String, continueFlag: UnsafePointer<Bool>? = nil, fileExtensionCondition: (String) -> Bool = { _ in return true },
-                                     foundLineCallback: (String, Int) -> T? ) -> [[T]] {
+    func lineReadSourceFilesSeperate<T>(atFolderPath folder: String, continueFlag: UnsafePointer<Bool>? = nil, fileExtensionCondition: (String) -> Bool = { _ in return true }, foundLineCallback: (String, Int) -> T? ) -> [[T]] {
         guard let dirEnumerator = enumerator(atPath: folder) else {
             return []
         }
@@ -38,6 +37,19 @@ public extension FileManager {
             }
         }
         return found
+    }
+    
+    func lineReadSourceFilesSeperate<T>(atFolderPath folder: String, continueFlag: UnsafePointer<Bool>? = nil, fileExtensionCondition: (String) -> Bool = { _ in return true }, foundLineCallback: (String, Int) -> T?, fileCallback: ([T], String) -> Void) {
+        guard let dirEnumerator = enumerator(atPath: folder) else {
+            return
+        }
+        let folderUrl = URL(fileURLWithPath: folder)
+        for element in dirEnumerator {
+            if let str = element as? String {
+                let res = lineReadSourceFile(folderUrl.appendingPathComponent(str).path, continueFlag: continueFlag, fileExtensionCondition: fileExtensionCondition, foundLineCallback: foundLineCallback)
+                fileCallback(res, str)
+            }
+        }
     }
     
     func lineReadSourceFile<T>(_ filePath: String, continueFlag: UnsafePointer<Bool>? = nil, fileExtensionCondition: (String) -> Bool = { _ in return true },
@@ -181,23 +193,23 @@ public func _divide(withCrossoverPoints pointsCount: Int, count: Int) -> [(Int, 
 }
 
 
-public struct BinaryBuff: CustomStringConvertible {
+public struct BinaryBuff: CustomStringConvertible, Equatable {
     public enum Error: Swift.Error {
-        case indexOutOfRange
+        case indexOutOfRange, incorrectRawBufferForGivenCapacity
     }
     
     static let intBitCapacity = MemoryLayout<Int>.size * 8
     private(set) public var rawBuff: [Int]
     private(set) public var capacity: Int
     
-    private func buffLimit(forCapacity capacity: Int) -> Int {
+    public static func buffLimit(forCapacity capacity: Int) -> Int {
         return ((capacity / BinaryBuff.intBitCapacity) + (capacity % BinaryBuff.intBitCapacity > 0 ? 1 : 0))
     }
     
     public init(capacity: Int) {
         self.capacity = capacity
         rawBuff = []
-        for _ in 0 ..< buffLimit(forCapacity: capacity) {
+        for _ in 0 ..< BinaryBuff.buffLimit(forCapacity: capacity) {
             rawBuff.append(0)
         }
     }
@@ -207,13 +219,21 @@ public struct BinaryBuff: CustomStringConvertible {
         self.capacity = raw.count * BinaryBuff.intBitCapacity
     }
     
+    public init(raw: [Int], capacity: Int) throws {
+        self.rawBuff = raw
+        self.capacity = capacity
+        if raw.count < BinaryBuff.buffLimit(forCapacity: capacity) {
+            throw Error.incorrectRawBufferForGivenCapacity
+        }
+    }
+    
     public mutating func extend(toCapacity to: Int) {
         if to <= capacity {
             capacity = to
         } else {
             capacity = to
             
-            for _  in rawBuff.count ..< buffLimit(forCapacity: capacity) {
+            for _  in rawBuff.count ..< BinaryBuff.buffLimit(forCapacity: capacity) {
                 rawBuff.append(0)
             }
         }
@@ -281,7 +301,6 @@ public struct BinaryBuff: CustomStringConvertible {
     
     public func crossover(with rhs: BinaryBuff, upToBits: Int, pointsCount: Int) -> (BinaryBuff, BinaryBuff) {
         assert(upToBits <= self.capacity && upToBits <= rhs.capacity)
-        
         var upToBits = upToBits
         var indx = 0
         var son = self
@@ -303,6 +322,25 @@ public struct BinaryBuff: CustomStringConvertible {
         return res
     }
     
+    public static func==(_ lhs: BinaryBuff, _ rhs: BinaryBuff) -> Bool {
+        return lhs.rawBuff == rhs.rawBuff && lhs.capacity == rhs.capacity
+    }
+    
+}
+
+extension BinaryBuff: Collection {
+    
+    public var startIndex: Int {
+        return 0
+    }
+    
+    public var endIndex: Int {
+        return capacity
+    }
+
+    public func index(after i: Int) -> Int {
+        return i + 1
+    }
 }
 
 public extension Int {
