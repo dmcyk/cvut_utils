@@ -69,24 +69,12 @@ class General: XCTestCase {
         
     }
     
-    func testBinaryBuffCrossover() {
-        var randomWeights = [Double]()
-        for _ in 0 ..< MemoryLayout<Int>.size * 8 {
-            randomWeights.append(Int.arc4random_uniform_d(Int(Int32.max)))
-        }
-        let lhs = BinaryBuff(raw: [Int.arc4random_uniform(Int(Int32.max))])
-        let rhs = BinaryBuff(raw: [Int.arc4random_uniform(Int(Int32.max))])
+    func testBinaryBuffCmp() {
+        let binbuff = try! BinaryBuff(raw: [15], capacity: 4)
+        let binbuff2 = try! BinaryBuff(raw: [31], capacity: 4)
+        assert(binbuff2.rawBuff[0] == 15)
+        assert(binbuff == binbuff2)
 
-        let (son, daughter) = lhs.crossover(with: rhs, upToBits: 64, pointsCount: 3)
-        
-        let lhsEvaluation = lhs.evaluate(usingWeights: randomWeights)
-        let rhsEvaluation = rhs.evaluate(usingWeights: randomWeights)
-        let sonEvaluation = son.evaluate(usingWeights: randomWeights)
-        let daughterEvaluation = daughter.evaluate(usingWeights: randomWeights)
-        
-        if (lhsEvaluation != rhsEvaluation) {
-            XCTAssert(sonEvaluation != daughterEvaluation && sonEvaluation != lhsEvaluation && daughterEvaluation != rhsEvaluation)
-        }
     }
 }
 

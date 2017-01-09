@@ -33,7 +33,10 @@ public extension FileManager {
         var found = [[T]]()
         for element in dirEnumerator {
             if let str = element as? String {
-                found.append(lineReadSourceFile(folderUrl.appendingPathComponent(str).path, continueFlag: continueFlag, fileExtensionCondition: fileExtensionCondition, foundLineCallback: foundLineCallback))
+                let res = lineReadSourceFile(folderUrl.appendingPathComponent(str).path, continueFlag: continueFlag, fileExtensionCondition: fileExtensionCondition, foundLineCallback: foundLineCallback)
+                if !res.isEmpty {
+                    found.append(res)
+                }
             }
         }
         return found
@@ -47,7 +50,9 @@ public extension FileManager {
         for element in dirEnumerator {
             if let str = element as? String {
                 let res = lineReadSourceFile(folderUrl.appendingPathComponent(str).path, continueFlag: continueFlag, fileExtensionCondition: fileExtensionCondition, foundLineCallback: foundLineCallback)
-                fileCallback(res, str)
+                if !res.isEmpty {
+                    fileCallback(res, str)
+                }
             }
         }
     }
@@ -221,6 +226,9 @@ public struct BinaryBuff: CustomStringConvertible, Equatable {
     
     public init(raw: [Int], capacity: Int) throws {
         self.rawBuff = raw
+        let move = BinaryBuff.intBitCapacity - 1 - (capacity % BinaryBuff.intBitCapacity)
+        let mask: Int = Int.max >> move
+        self.rawBuff[self.rawBuff.count - 1] = self.rawBuff[self.rawBuff.count - 1] & mask
         self.capacity = capacity
         if raw.count < BinaryBuff.buffLimit(forCapacity: capacity) {
             throw Error.incorrectRawBufferForGivenCapacity
@@ -249,7 +257,7 @@ public struct BinaryBuff: CustomStringConvertible, Equatable {
         }
         return res
     }
-
+    
     
     public func get(index: Int) throws -> Bool {
         guard index >= 0 && index < capacity else {
@@ -303,6 +311,7 @@ public struct BinaryBuff: CustomStringConvertible, Equatable {
         assert(upToBits <= self.capacity && upToBits <= rhs.capacity)
         var upToBits = upToBits
         var indx = 0
+        let pointsCount = pointsCount / rawBuff.count
         var son = self
         var daughter = rhs
         while upToBits > 0 {
@@ -319,17 +328,40 @@ public struct BinaryBuff: CustomStringConvertible, Equatable {
         for i in 0 ..< capacity {
             res += "\(self[i] ? 1 : 0)"
         }
+        res += "/\(capacity)"
         return res
     }
     
+    
     public static func==(_ lhs: BinaryBuff, _ rhs: BinaryBuff) -> Bool {
-        return lhs.rawBuff == rhs.rawBuff && lhs.capacity == rhs.capacity
+        
+        return lhs.capacity == rhs.capacity && lhs.rawBuff == rhs.rawBuff
+        //        if lhs.capacity != rhs.capacity {
+        //            return false
+        //        }
+        //        var indx = 0
+        //        while indx < lhs.rawBuff.count - 1 {
+        //            if lhs.rawBuff[indx] != rhs.rawBuff[indx] {
+        //                return false
+        //            }
+        //            indx += 1
+        //        }
+        //        let move = BinaryBuff.intBitCapacity - 1 - (lhs.capacity % BinaryBuff.intBitCapacity)
+        //        let mask: Int = Int.max >> move
+        //
+        //        return ((lhs.rawBuff.last!) & mask == (rhs.rawBuff.last! & mask))
+        
     }
+    
+    public mutating func unsafeSetRawBuffer(newValue: Int, index: Int) {
+        rawBuff[index] = newValue
+    }
+    
     
 }
 
 extension BinaryBuff: Collection {
-    
+    public typealias Index = Int
     public var startIndex: Int {
         return 0
     }
@@ -337,10 +369,40 @@ extension BinaryBuff: Collection {
     public var endIndex: Int {
         return capacity
     }
-
+    
     public func index(after i: Int) -> Int {
         return i + 1
     }
+}
+
+extension BinaryBuff {
+    
+    public class CodingHelper: NSObject, NSCoding {
+        public var buff: BinaryBuff
+        
+        public  func encode(with aCoder: NSCoder) {
+            aCoder.encode(buff.capacity, forKey: "cap")
+            aCoder.encode(buff.rawBuff, forKey: "buff")
+        }
+        
+        public init(_ buff: BinaryBuff) {
+            self.buff = buff
+        }
+        
+        
+        public required init?(coder aDecoder: NSCoder) {
+            let capacity = aDecoder.decodeInteger(forKey: "cap")
+            guard let rawBuff: [Int] = (aDecoder.decodeObject(forKey: "buff") as? NSArray as? [Int]) else {
+                return nil
+            }
+            if let buff = try? BinaryBuff(raw: rawBuff, capacity: capacity) {
+                self.buff = buff
+            } else {
+                return nil
+            }
+        }
+    }
+    
 }
 
 public extension Int {
@@ -381,7 +443,7 @@ public extension Int {
             daughter |= dad
             
         }
-
+        
         return (son, daughter)
     }
     
