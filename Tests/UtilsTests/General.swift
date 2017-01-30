@@ -4,7 +4,15 @@ class General: XCTestCase {
     static let allTests = [
         ("testArrayDivision", testArrayDivision),
         ("testBinaryBuffSubscript", testBinaryBuffSubscript),
-        ("testBinaryBuffExtend", testBinaryBuffExtend)
+        ("testBinaryBuffExtend", testBinaryBuffExtend),
+        ("testBinaryBuffCmp", testBinaryBuffCmp),
+        ("testBinaryBuffCmp2", testBinaryBuffCmp2),
+        ("testBinaryBuffSetPerformance", testBinaryBuffSetPerformance),
+        ("testArraySetPerformance", testArraySetPerformance),
+        ("testBinaryBuffGetPerformance", testBinaryBuffGetPerformance),
+        ("testArrayGetPerformance", testArrayGetPerformance),
+        ("testBinaryBuffCopyPerformance", testBinaryBuffCopyPerformance),
+        ("testArrayCopyPerformance", testArrayCopyPerformance)
     ]
     
     func testArrayDivision() {
@@ -76,6 +84,95 @@ class General: XCTestCase {
         assert(binbuff == binbuff2)
 
     }
+    
+    func testBinaryBuffCmp2() {
+        let binbuff = try! BinaryBuff(raw: [614689], capacity: 20)
+        let binbuff2 = try! BinaryBuff(raw: [17595227529505], capacity: 20)
+        assert(binbuff == binbuff2)
+        
+        let seq = [binbuff]
+        assert(seq.contains(binbuff2))
+    }
+    
+    func testBinaryBuffSetPerformance() {
+        var binbuff = BinaryBuff(capacity: 500000)
+        
+        measure {
+            for i in 0 ..< 500000 {
+                binbuff[i] = true
+            }
+        }
+        
+    }
+    
+    func testArraySetPerformance() {
+        var arr = [Bool]()
+        for _ in 0 ..< 500000 {
+            arr.append(false)
+        }
+        measure {
+            for i in 0 ..< 500000 {
+                arr[i] = true
+            }
+        }
+    }
+    
+    func testBinaryBuffGetPerformance() {
+        var binbuff = BinaryBuff(capacity: 500000)
+        for i in 0 ..< 500000 {
+            binbuff[i] = true
+        }
+        measure {
+            for i in 0 ..< 500000 {
+                let _ = binbuff[i]
+            }
+        }
+    }
+    
+    func testArrayGetPerformance() {
+        var arr = [Bool]()
+        arr.reserveCapacity(500000)
+        for _ in 0 ..< 500000 {
+            arr.append(true)
+        }
+        measure {
+            for i in 0 ..< 500000 {
+                let _ = arr[i]
+            }
+        }
+    }
+    
+    func testBinaryBuffCopyPerformance() {
+        var binbuff = BinaryBuff(capacity: 50000)
+        for i in 0 ..< 50000 {
+            binbuff[i] = true
+        }
+        measure {
+            for _ in 0 ..< 50000 {
+                var new = binbuff
+                new[0] = false
+                new[1] = false
+            }
+        }
+        
+    }
+    
+    func testArrayCopyPerformance() {
+        var arr = [Bool]()
+        arr.reserveCapacity(50000)
+        for _ in 0 ..< 50000 {
+            arr.append(true)
+        }
+        measure {
+            for _ in 0 ..< 50000 {
+                var new = arr
+                new[0] = false
+                new[1] = false
+
+            }
+        }
+    }
+    
 }
 
 

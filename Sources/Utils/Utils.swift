@@ -42,7 +42,7 @@ public extension FileManager {
         return found
     }
     
-    func lineReadSourceFilesSeperate<T>(atFolderPath folder: String, continueFlag: UnsafePointer<Bool>? = nil, fileExtensionCondition: (String) -> Bool = { _ in return true }, foundLineCallback: (String, Int) -> T?, fileCallback: ([T], String) -> Void) {
+    func lineReadSourceFilesSeperate<T>(atFolderPath folder: String, continueFlag: UnsafePointer<Bool>? = nil, fileExtensionCondition: (String) -> Bool = { _ in return true }, foundLineCallback: (String, Int) -> T?, fileCallback: ([T], String) -> Bool) {
         guard let dirEnumerator = enumerator(atPath: folder) else {
             return
         }
@@ -51,7 +51,9 @@ public extension FileManager {
             if let str = element as? String {
                 let res = lineReadSourceFile(folderUrl.appendingPathComponent(str).path, continueFlag: continueFlag, fileExtensionCondition: fileExtensionCondition, foundLineCallback: foundLineCallback)
                 if !res.isEmpty {
-                    fileCallback(res, str)
+                    if !fileCallback(res, str) {
+                        return
+                    }
                 }
             }
         }
@@ -184,7 +186,6 @@ public func _divide(withCrossoverPoints pointsCount: Int, count: Int) -> [(Int, 
     assert(pointsCount > 0 && pointsCount < count)
     
     let upperBound = count / (pointsCount + 1)
-    
     var start = 0
     var till = upperBound - 1
     var points: [(Int, Int)] = []
@@ -205,6 +206,7 @@ public struct BinaryBuff: CustomStringConvertible, Equatable {
     
     static let intBitCapacity = MemoryLayout<Int>.size * 8
     private(set) public var rawBuff: [Int]
+    
     private(set) public var capacity: Int
     
     public static func buffLimit(forCapacity capacity: Int) -> Int {
@@ -224,15 +226,21 @@ public struct BinaryBuff: CustomStringConvertible, Equatable {
         self.capacity = raw.count * BinaryBuff.intBitCapacity
     }
     
-    public init(raw: [Int], capacity: Int) throws {
-        self.rawBuff = raw
+    private mutating func maskBuffer() {
         let move = BinaryBuff.intBitCapacity - 1 - (capacity % BinaryBuff.intBitCapacity)
         let mask: Int = Int.max >> move
         self.rawBuff[self.rawBuff.count - 1] = self.rawBuff[self.rawBuff.count - 1] & mask
-        self.capacity = capacity
+    }
+    
+    public init(raw: [Int], capacity: Int) throws {
         if raw.count < BinaryBuff.buffLimit(forCapacity: capacity) {
             throw Error.incorrectRawBufferForGivenCapacity
         }
+        
+        self.rawBuff = raw
+        self.capacity = capacity
+        self.maskBuffer()
+        
     }
     
     public mutating func extend(toCapacity to: Int) {
@@ -285,16 +293,16 @@ public struct BinaryBuff: CustomStringConvertible, Equatable {
     
     public subscript(index: Int) -> Bool {
         get {
-            assert(index >= 0)
-            assert(index < capacity)
+            precondition(index >= 0)
+            precondition(index < capacity)
             let rawIndex = index / BinaryBuff.intBitCapacity
             let _buff = rawBuff[rawIndex]
             let current = index - (rawIndex * BinaryBuff.intBitCapacity)
-            return ((_buff >> current) & 1) == 1
+            return ((_buff >> current) & 1) > 0
         }
         set {
-            assert(index >= 0)
-            assert(index < capacity)
+            precondition(index >= 0)
+            precondition(index < capacity)
             let rawIndex = index / BinaryBuff.intBitCapacity
             let current = index - (rawIndex * BinaryBuff.intBitCapacity)
             let _buff = rawBuff[rawIndex]
@@ -307,19 +315,32 @@ public struct BinaryBuff: CustomStringConvertible, Equatable {
         
     }
     
+    public func toArray() -> [Bool] {
+        var arr: [Bool] = []
+        for v in self {
+            arr.append(v)
+        }
+        return arr
+    }
+    
     public func crossover(with rhs: BinaryBuff, upToBits: Int, pointsCount: Int) -> (BinaryBuff, BinaryBuff) {
-        assert(upToBits <= self.capacity && upToBits <= rhs.capacity)
+        
+        precondition(upToBits <= self.capacity && upToBits <= rhs.capacity)
         var upToBits = upToBits
         var indx = 0
         let pointsCount = pointsCount / rawBuff.count
         var son = self
         var daughter = rhs
-        while upToBits > 0 {
-            (daughter.rawBuff[indx], son.rawBuff[indx]) = self.rawBuff[indx].bitCrossover(with: rhs.rawBuff[indx], upToBit: upToBits > BinaryBuff.intBitCapacity ? BinaryBuff.intBitCapacity : upToBits, pointsCount: pointsCount)
+        
+        while upToBits > BinaryBuff.intBitCapacity {
+            (daughter.rawBuff[indx], son.rawBuff[indx]) = self.rawBuff[indx].bitCrossover(with: rhs.rawBuff[indx], upToBit: BinaryBuff.intBitCapacity, pointsCount: pointsCount)
             
             indx += 1
             upToBits -= BinaryBuff.intBitCapacity
         }
+        (daughter.rawBuff[indx], son.rawBuff[indx]) = self.rawBuff[indx].bitCrossover(with: rhs.rawBuff[indx], upToBit: upToBits, pointsCount: pointsCount < upToBits ? pointsCount : upToBits / 2)
+        son.maskBuffer()
+        daughter.maskBuffer()
         return (son, daughter)
     }
     
@@ -336,20 +357,6 @@ public struct BinaryBuff: CustomStringConvertible, Equatable {
     public static func==(_ lhs: BinaryBuff, _ rhs: BinaryBuff) -> Bool {
         
         return lhs.capacity == rhs.capacity && lhs.rawBuff == rhs.rawBuff
-        //        if lhs.capacity != rhs.capacity {
-        //            return false
-        //        }
-        //        var indx = 0
-        //        while indx < lhs.rawBuff.count - 1 {
-        //            if lhs.rawBuff[indx] != rhs.rawBuff[indx] {
-        //                return false
-        //            }
-        //            indx += 1
-        //        }
-        //        let move = BinaryBuff.intBitCapacity - 1 - (lhs.capacity % BinaryBuff.intBitCapacity)
-        //        let mask: Int = Int.max >> move
-        //
-        //        return ((lhs.rawBuff.last!) & mask == (rhs.rawBuff.last! & mask))
         
     }
     
@@ -425,24 +432,26 @@ public extension Int {
         }
     }
     
-    
-    
     func bitCrossover(with another: Int, upToBit upTo: Int, pointsCount: Int) -> (Int, Int) {
-        assert(pointsCount > 0 && pointsCount < upTo)
+        
+        precondition(pointsCount > 0 && pointsCount < upTo)
         
         let points = _divide(withCrossoverPoints: pointsCount, count: upTo)
         var son = self
         var daughter = another
+        
         for point in points {
-            let mask = (1 << (point.1 - point.0) - 1) << point.0
+            var mask = (1 << (point.1 - point.0) - 1) << point.0
             let dad = self & mask
             let mum = another & mask
-            son &= ~mask
-            daughter &= ~mask
+            mask = ~mask
+            son &= mask
+            daughter &= mask
             son |= mum
             daughter |= dad
             
         }
+        
         
         return (son, daughter)
     }
