@@ -13,6 +13,7 @@ public struct ValueStream<T> {
     public var buff: [T]
     
     @_specialize(Int)
+    @_specialize(Double)
     public init(fetchBlock: @escaping (inout [T]) -> Void) {
         self.fetchBlock = fetchBlock
         self.buff = []
@@ -21,11 +22,14 @@ public struct ValueStream<T> {
     }
     
     @_specialize(Int)
-    mutating private func fill() {
+    @_specialize(Double)
+    mutating func fill() {
         fetchBlock(&buff)
     }
     
     @_specialize(Int)
+    @_specialize(Double)
+    @inline(__always)
     mutating public func next() -> T {
         
         var last = buff.popLast()
