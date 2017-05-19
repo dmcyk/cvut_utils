@@ -31,14 +31,16 @@ public extension Array {
     
 }
 
-public extension Array where Element: FloatingPoint {
-    func normalized(scale: Element) -> [Element] {
-        guard let maxVal = self.max(), let minVal = self.min() else {
-            return []
-        }
-        let diff = maxVal - minVal
-        return self.map { val in
-            ((val - minVal) / diff) * scale
-        }
-    }
+public extension Array where Element: BinaryFloatingPoint {
+    
+//    func normalized(scale: Element) -> [Element] {
+//        guard let maxVal = self.max(), let minVal = self.min() else {
+//            return []
+//        }
+//        let diff = maxVal - minVal
+//        
+//        return self.map { val in
+//            ((val - minVal) / diff) * scale
+//        }
+//    }
 }

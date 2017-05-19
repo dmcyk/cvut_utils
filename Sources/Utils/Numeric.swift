@@ -70,17 +70,22 @@ public extension Int {
             }
         }
     }
-    
-    func bitCrossover(with another: Int, upToBit upTo: Int, pointsCount: Int) -> (Int, Int) {
+
+}
+
+public extension FixedWidthInteger {
+    func bitCrossover(with another: Self, upToBit upTo: Self, pointsCount: Self) -> (Self, Self) {
         
         precondition(pointsCount > 0 && pointsCount < upTo)
         
         let points = _divide(withCrossoverPoints: pointsCount, count: upTo)
+        
         var son = self
         var daughter = another
         
+        let one: Self = 1
         for point in points {
-            var mask = (1 << (point.1 - point.0) - 1) << point.0
+            var mask = (one << (point.1 - point.0) - one) << point.0
             let dad = self & mask
             let mum = another & mask
             mask = ~mask
@@ -94,23 +99,22 @@ public extension Int {
         
         return (son, daughter)
     }
-    
 }
 
 
 
-public func _divide(withCrossoverPoints pointsCount: Int, count: Int) -> [(Int, Int)] {
-    assert(pointsCount > 0 && pointsCount < count)
+public func _divide<T: FixedWidthInteger>(withCrossoverPoints pointsCount: T, count cnt: T) -> [(T, T)] {
+    assert(pointsCount > 0 && pointsCount < cnt)
     
-    let upperBound = count / (pointsCount + 1)
-    var start = 0
-    var till = upperBound - 1
-    var points: [(Int, Int)] = []
+    let upperBound = T(cnt / (pointsCount + 1))
+    var start: T = 0
+    var till: T = upperBound - 1
+    var points: [(T, T)] = []
     for _ in 0 ... Int(pointsCount) {
         points.append((start, till))
         start = till + 1
         till += upperBound
     }
-    points[points.count - 1] = (start - upperBound, count - 1)
+    points[points.count - 1] = (start - upperBound, cnt - 1)
     return points
 }

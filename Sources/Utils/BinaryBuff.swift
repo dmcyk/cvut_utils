@@ -8,63 +8,98 @@
 
 import Foundation
 
+@_specialize(exported: true, where T: _Trivial(32))
+@_specialize(exported: true, where T: _Trivial(64))
+func binaryBuff_intBitCapacity<T: FixedWidthInteger>(_ type: T.Type) -> T {
+    return T(MemoryLayout<T>.size * 8)
+    
+}
 
-public struct BinaryBuff: CustomStringConvertible, Equatable {
+
+public struct BinaryBuff<StoreType: FixedWidthInteger>: CustomStringConvertible, Equatable {
+    
     public enum Error: Swift.Error {
         case indexOutOfRange, incorrectRawBufferForGivenCapacity
     }
     
-    static let intBitCapacity = MemoryLayout<Int>.size * 8
-    private(set) public var rawBuff: [Int]
+    let intBitCapacity: StoreType = binaryBuff_intBitCapacity(StoreType.self)
+    let _intBitCapacity: Int = Int(binaryBuff_intBitCapacity(StoreType.self))
     
-    private(set) public var capacity: Int
+    private(set) public var rawBuff: [StoreType]
     
-    public static func buffLimit(forCapacity capacity: Int) -> Int {
-        return ((capacity / BinaryBuff.intBitCapacity) + (capacity % BinaryBuff.intBitCapacity > 0 ? 1 : 0))
+    private(set) public var capacity: Int {
+        didSet {
+            buffLimit = getBuffLimit(forCapacity: capacity)
+        }
     }
+    private var buffLimit: Int = -1
     
+    @_specialize(exported: true, where StoreType: _Trivial(32))
+    @_specialize(exported: true, where StoreType: _Trivial(64))
     public init(capacity: Int) {
         self.capacity = capacity
         rawBuff = []
-        for _ in 0 ..< BinaryBuff.buffLimit(forCapacity: capacity) {
+        self.buffLimit = getBuffLimit(forCapacity: capacity)
+        for _ in 0 ..< buffLimit {
             rawBuff.append(0)
         }
     }
     
-    public init(raw: [Int]) {
+    @_specialize(exported: true, where StoreType: _Trivial(32))
+    @_specialize(exported: true, where StoreType: _Trivial(64))
+    public init(raw: [StoreType]) {
         self.rawBuff = raw
-        self.capacity = raw.count * BinaryBuff.intBitCapacity
+        self.capacity = raw.count * _intBitCapacity
+        self.buffLimit = getBuffLimit(forCapacity: capacity)
+
     }
     
-    private mutating func maskBuffer() {
-        let move = BinaryBuff.intBitCapacity - 1 - (capacity % BinaryBuff.intBitCapacity)
-        let mask: Int = Int.max >> move
-        self.rawBuff[self.rawBuff.count - 1] = self.rawBuff[self.rawBuff.count - 1] & mask
-    }
-    
-    public init(raw: [Int], capacity: Int) throws {
-        if raw.count < BinaryBuff.buffLimit(forCapacity: capacity) {
-            throw Error.incorrectRawBufferForGivenCapacity
-        }
+    @_specialize(exported: true, where StoreType: _Trivial(32))
+    @_specialize(exported: true, where StoreType: _Trivial(64))
+    public init(raw: [StoreType], capacity: Int) throws {
         
         self.rawBuff = raw
         self.capacity = capacity
+        self.buffLimit = getBuffLimit(forCapacity: capacity)
         self.maskBuffer()
+        
+        if raw.count < buffLimit {
+            throw Error.incorrectRawBufferForGivenCapacity
+        }
+        
         
     }
     
+    @_specialize(exported: true, where StoreType: _Trivial(32))
+    @_specialize(exported: true, where StoreType: _Trivial(64))
+    public func getBuffLimit(forCapacity capacity: Int) -> Int {
+        return ((capacity / _intBitCapacity) + (capacity % _intBitCapacity > 0 ? 1 : 0))
+    }
+    
+    @_specialize(exported: true, where StoreType: _Trivial(32))
+    @_specialize(exported: true, where StoreType: _Trivial(64))
+    private mutating func maskBuffer() {
+        let move = StoreType(_intBitCapacity - 1 - (capacity % _intBitCapacity))
+        let mask: StoreType = StoreType.max >> move
+        self.rawBuff[self.rawBuff.count - 1] = self.rawBuff[self.rawBuff.count - 1] & mask
+    }
+    
+    @_specialize(exported: true, where StoreType: _Trivial(32))
+    @_specialize(exported: true, where StoreType: _Trivial(64))
     public mutating func extend(toCapacity to: Int) {
         if to <= capacity {
             capacity = to
         } else {
             capacity = to
             
-            for _  in rawBuff.count ..< BinaryBuff.buffLimit(forCapacity: capacity) {
+            for _  in rawBuff.count ..< buffLimit {
                 rawBuff.append(0)
             }
         }
     }
     
+    @_specialize(exported: true, where StoreType: _Trivial(32))
+    @_specialize(exported: true, where StoreType: _Trivial(64))
     public func evaluate(usingWeights: [Double]) -> Double {
         assert(usingWeights.count <= capacity)
         var res: Double = 0
@@ -76,23 +111,26 @@ public struct BinaryBuff: CustomStringConvertible, Equatable {
         return res
     }
     
-    
+    @_specialize(exported: true, where StoreType: _Trivial(32))
+    @_specialize(exported: true, where StoreType: _Trivial(64))
     public func get(index: Int) throws -> Bool {
         guard index >= 0 && index < capacity else {
             throw Error.indexOutOfRange
         }
-        let rawIndex = index / BinaryBuff.intBitCapacity
+        let rawIndex = index / _intBitCapacity
         let _buff = rawBuff[rawIndex]
-        let current = index - (rawIndex * BinaryBuff.intBitCapacity)
+        let current = index - (rawIndex * _intBitCapacity)
         return ((_buff >> current) & 1) == 1
     }
     
+    @_specialize(exported: true, where StoreType: _Trivial(32))
+    @_specialize(exported: true, where StoreType: _Trivial(64))
     public mutating func set(index: Int, value: Bool) throws {
         guard index >= 0 && index < capacity else {
             throw Error.indexOutOfRange
         }
-        let rawIndex = index / BinaryBuff.intBitCapacity
-        let current = index - (rawIndex * BinaryBuff.intBitCapacity)
+        let rawIndex = index / _intBitCapacity
+        let current = index - (rawIndex * _intBitCapacity)
         let _buff = rawBuff[rawIndex]
         if value {
             rawBuff[rawIndex] = _buff | (1 << current)
@@ -105,16 +143,16 @@ public struct BinaryBuff: CustomStringConvertible, Equatable {
         get {
             precondition(index >= 0)
             precondition(index < capacity)
-            let rawIndex = index / BinaryBuff.intBitCapacity
+            let rawIndex = index / _intBitCapacity
             let _buff = rawBuff[rawIndex]
-            let current = index - (rawIndex * BinaryBuff.intBitCapacity)
-            return ((_buff >> current) & 1) > 0
+            let current = index - (rawIndex * _intBitCapacity)
+            return ((_buff >> current) & 1) != 0
         }
         set {
             precondition(index >= 0)
             precondition(index < capacity)
-            let rawIndex = index / BinaryBuff.intBitCapacity
-            let current = index - (rawIndex * BinaryBuff.intBitCapacity)
+            let rawIndex = index / _intBitCapacity
+            let current = index - (rawIndex * _intBitCapacity)
             let _buff = rawBuff[rawIndex]
             if newValue {
                 rawBuff[rawIndex] = _buff | (1 << current)
@@ -125,6 +163,8 @@ public struct BinaryBuff: CustomStringConvertible, Equatable {
         
     }
     
+    @_specialize(exported: true, where StoreType: _Trivial(32))
+    @_specialize(exported: true, where StoreType: _Trivial(64))
     public func toArray() -> [Bool] {
         var arr: [Bool] = []
         for v in self {
@@ -133,20 +173,22 @@ public struct BinaryBuff: CustomStringConvertible, Equatable {
         return arr
     }
     
-    public func crossover(with rhs: BinaryBuff, upToBits: Int, pointsCount: Int) -> (BinaryBuff, BinaryBuff) {
+    @_specialize(exported: true, where StoreType: _Trivial(32))
+    @_specialize(exported: true, where StoreType: _Trivial(64))
+    public func crossover(with rhs: BinaryBuff, upToBits: StoreType, pointsCount: StoreType) -> (BinaryBuff, BinaryBuff) {
         
         precondition(upToBits <= self.capacity && upToBits <= rhs.capacity)
         var upToBits = upToBits
         var indx = 0
-        let pointsCount = pointsCount / rawBuff.count
+        let pointsCount = pointsCount / StoreType(rawBuff.count)
         var son = self
         var daughter = rhs
         
-        while upToBits > BinaryBuff.intBitCapacity {
-            (daughter.rawBuff[indx], son.rawBuff[indx]) = self.rawBuff[indx].bitCrossover(with: rhs.rawBuff[indx], upToBit: BinaryBuff.intBitCapacity, pointsCount: pointsCount)
+        while upToBits > intBitCapacity {
+            (daughter.rawBuff[indx], son.rawBuff[indx]) = self.rawBuff[indx].bitCrossover(with: rhs.rawBuff[indx], upToBit: intBitCapacity, pointsCount: pointsCount)
             
             indx += 1
-            upToBits -= BinaryBuff.intBitCapacity
+            upToBits -= intBitCapacity
         }
         (daughter.rawBuff[indx], son.rawBuff[indx]) = self.rawBuff[indx].bitCrossover(with: rhs.rawBuff[indx], upToBit: upToBits, pointsCount: pointsCount < upToBits ? pointsCount : upToBits / 2)
         son.maskBuffer()
@@ -164,13 +206,17 @@ public struct BinaryBuff: CustomStringConvertible, Equatable {
     }
     
     
-    public static func==(_ lhs: BinaryBuff, _ rhs: BinaryBuff) -> Bool {
+    @_specialize(exported: true, where StoreType: _Trivial(32))
+    @_specialize(exported: true, where StoreType: _Trivial(64))
+    public static func ==(_ lhs: BinaryBuff, _ rhs: BinaryBuff) -> Bool {
         
         return lhs.capacity == rhs.capacity && lhs.rawBuff == rhs.rawBuff
         
     }
     
-    public mutating func unsafeSetRawBuffer(newValue: Int, index: Int) {
+//    @_specialize(exported: true, where StoreType: _Trivial(32))
+//    @_specialize(exported: true, where StoreType: _Trivial(64))
+    public mutating func unsafeSetRawBuffer(newValue: StoreType, index: Int) {
         rawBuff[index] = newValue
     }
     
@@ -193,32 +239,3 @@ extension BinaryBuff: Collection {
     }
 }
 
-extension BinaryBuff {
-    
-    public class CodingHelper: NSObject, NSCoding {
-        public var buff: BinaryBuff
-        
-        public  func encode(with aCoder: NSCoder) {
-            aCoder.encode(buff.capacity, forKey: "cap")
-            aCoder.encode(buff.rawBuff, forKey: "buff")
-        }
-        
-        public init(_ buff: BinaryBuff) {
-            self.buff = buff
-        }
-        
-        
-        public required init?(coder aDecoder: NSCoder) {
-            let capacity = aDecoder.decodeInteger(forKey: "cap")
-            guard let rawBuff: [Int] = (aDecoder.decodeObject(forKey: "buff") as? NSArray as? [Int]) else {
-                return nil
-            }
-            if let buff = try? BinaryBuff(raw: rawBuff, capacity: capacity) {
-                self.buff = buff
-            } else {
-                return nil
-            }
-        }
-    }
-    
-}

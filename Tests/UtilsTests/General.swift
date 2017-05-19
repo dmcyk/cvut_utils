@@ -32,7 +32,7 @@ class General: XCTestCase {
     }
     
     func testBinaryBuffSubscript() {
-        var binbuff = BinaryBuff(capacity: 128)
+        var binbuff = BinaryBuff<Int>(capacity: 128)
         
         XCTAssert(binbuff.rawBuff.count == 2)
         XCTAssertThrowsError(try binbuff.get(index: 128))
@@ -58,7 +58,7 @@ class General: XCTestCase {
     }
     
     func testBinaryBuffExtend() {
-        var binbuff = BinaryBuff(capacity: 62)
+        var binbuff = BinaryBuff<Int>(capacity: 62)
         
         XCTAssert(binbuff.rawBuff.count == 1)
         
@@ -78,16 +78,16 @@ class General: XCTestCase {
     }
     
     func testBinaryBuffCmp() {
-        let binbuff = try! BinaryBuff(raw: [15], capacity: 4)
-        let binbuff2 = try! BinaryBuff(raw: [31], capacity: 4)
+        let binbuff = try! BinaryBuff<Int>(raw: [15], capacity: 4)
+        let binbuff2 = try! BinaryBuff<Int>(raw: [31], capacity: 4)
         assert(binbuff2.rawBuff[0] == 15)
         assert(binbuff == binbuff2)
 
     }
     
     func testBinaryBuffCmp2() {
-        let binbuff = try! BinaryBuff(raw: [614689], capacity: 20)
-        let binbuff2 = try! BinaryBuff(raw: [17595227529505], capacity: 20)
+        let binbuff = try! BinaryBuff<Int>(raw: [614689], capacity: 20)
+        let binbuff2 = try! BinaryBuff<Int>(raw: [17595227529505], capacity: 20)
         assert(binbuff == binbuff2)
         
         let seq = [binbuff]
@@ -95,11 +95,44 @@ class General: XCTestCase {
     }
     
     func testBinaryBuffSetPerformance() {
-        var binbuff = BinaryBuff(capacity: 500000)
+        var binbuff = BinaryBuff<Int>(capacity: 500000)
         
         measure {
             for i in 0 ..< 500000 {
                 binbuff[i] = true
+            }
+        }
+        
+    }
+    
+    func testIntBinaryBuffSetPerformance() {
+        var binbuff = IntBinaryBuff(capacity: 500000)
+        
+        measure {
+            for i in 0 ..< 500000 {
+                binbuff[i] = true
+            }
+        }
+        
+    }
+    
+    func testBinaryBuffRawSetPerformance() {
+        var binbuff = BinaryBuff<Int>(capacity: 500000)
+        
+        measure {
+            for i in 0 ..< 500000 {
+                try! binbuff.set(index: i, value: true)
+            }
+        }
+        
+    }
+    
+    func testIntBinaryBuffRawSetPerformance() {
+        var binbuff = IntBinaryBuff(capacity: 500000)
+        
+        measure {
+            for i in 0 ..< 500000 {
+                try! binbuff.set(index: i, value: true)
             }
         }
         
@@ -118,13 +151,49 @@ class General: XCTestCase {
     }
     
     func testBinaryBuffGetPerformance() {
-        var binbuff = BinaryBuff(capacity: 500000)
+        var binbuff = BinaryBuff<Int>(capacity: 500000)
         for i in 0 ..< 500000 {
             binbuff[i] = true
         }
         measure {
             for i in 0 ..< 500000 {
                 let _ = binbuff[i]
+            }
+        }
+    }
+    
+    func testIntBinaryBuffGetPerformance() {
+        var binbuff = IntBinaryBuff(capacity: 500000)
+        for i in 0 ..< 500000 {
+            binbuff[i] = true
+        }
+        measure {
+            for i in 0 ..< 500000 {
+                let _ = binbuff[i]
+            }
+        }
+    }
+    
+    func testBinaryBuffRawGetPerformance() {
+        var binbuff = BinaryBuff<Int>(capacity: 500000)
+        for i in 0 ..< 500000 {
+            binbuff[i] = true
+        }
+        measure {
+            for i in 0 ..< 500000 {
+                let _ = try! binbuff.get(index: i)
+            }
+        }
+    }
+    
+    func testIntBinaryBuffRawGetPerformance() {
+        var binbuff = IntBinaryBuff(capacity: 500000)
+        for i in 0 ..< 500000 {
+            binbuff[i] = true
+        }
+        measure {
+            for i in 0 ..< 500000 {
+                let _ = try! binbuff.get(index: i)
             }
         }
     }
@@ -143,7 +212,22 @@ class General: XCTestCase {
     }
     
     func testBinaryBuffCopyPerformance() {
-        var binbuff = BinaryBuff(capacity: 50000)
+        var binbuff = BinaryBuff<Int>(capacity: 50000)
+        for i in 0 ..< 50000 {
+            binbuff[i] = true
+        }
+        measure {
+            for _ in 0 ..< 50000 {
+                var new = binbuff
+                new[0] = false
+                new[1] = false
+            }
+        }
+        
+    }
+    
+    func testIntBinaryBuffCopyPerformance() {
+        var binbuff = IntBinaryBuff(capacity: 50000)
         for i in 0 ..< 50000 {
             binbuff[i] = true
         }
